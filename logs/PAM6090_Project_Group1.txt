@@ -1,0 +1,1182 @@
+. 
+.       cd /Users/sammygold/Desktop/Group1Replicate/
+/Users/sammygold/Desktop/Group1Replicate
+.       do source/scripts/PAM6090_Proj_Regressions.do
+
+. 
+. 
+. use "data/processed/pulse_final_sample.dta", clear 
+
+. 
+. //make food security dummy  
+. {
+. destring curfoodsuf, replace 
+curfoodsuf: all characters numeric; replaced as byte
+. //drop missing variables 
+. drop if curfoodsuf == -99 
+(189 observations deleted)
+. drop if curfoodsuf == -88
+(0 observations deleted)
+. 
+. gen foodsecure = 0
+. replace foodsecure = 1 if curfoodsuf == 1 
+(78,961 real changes made)
+. replace foodsecure = 1 if curfoodsuf == 2 
+(22,718 real changes made)
+. label var foodsecure "=0 if food insecure, =1 if food secure"
+. 
+. gen foodsecure_high = curfoodsuf
+. recode foodsecure_high (4=0)(3=0)(2=0)(1=1)
+(foodsecure_high: 28973 changes made)
+. 
+. gen foodsecure_low = curfoodsuf
+. recode foodsecure_low (4=1)(3=0)(2=0)(1=0)
+(foodsecure_low: 107934 changes made)
+. }
+
+. 
+. //make treatment variable 
+. {
+. destring tenrollpub tenrollprv tenrollhmsch, replace force
+tenrollpub: all characters numeric; replaced as byte
+tenrollprv: all characters numeric; replaced as byte
+tenrollhmsch: all characters numeric; replaced as byte
+. 
+. //drop if missing 
+. drop if tenrollpub == -99 
+(38,497 observations deleted)
+. drop if tenrollpub == -88
+(439 observations deleted)
+. drop if tenrollprv == -99 
+(60,201 observations deleted)
+. drop if tenrollprv == -88
+(0 observations deleted)
+. drop if tenrollhmsch == -99 
+(1,944 observations deleted)
+. drop if tenrollhmsch == -88
+(0 observations deleted)
+. 
+. //enerate total number of children in K-12 
+. gen kids_K_12 = tenrollpub + tenrollprv + tenrollhmsch
+. label var kids_K_12  "number of children in K-12"
+. 
+. //drop if greater than 5 
+. drop if kids_K_12 > 5 
+(42 observations deleted)
+. 
+. //generate number of kids pre-K age by subtracting the number of kids K-12 fr
+> om the total number of kids in the house 
+. gen kids_preK = thhld_numkid - kids_K_12 
+. label var kids_preK "number of children preK or newborn age" 
+. //drop if negative 
+. drop if kids_preK < 0 
+(354 observations deleted)
+. 
+. //generate the percentage of children in the house in pre-K
+. gen percent_kids_preK = kids_preK / thhld_numkid
+. label var percent_kids_preK "percentage of children preK age"
+. 
+. //generate a variable that is 1 if all children in the house are pre-K aged 
+. gen all_preK = 0 
+. replace all_preK = 1 if kids_K_12 == 0 
+(1,437 real changes made)
+. label var all_preK "all children pre-school or newborn age"
+. 
+. //generate a variable that is 1 if all children in the house are K-12
+. gen all_K_12 = 0 
+. replace all_K_12 = 1 if thhld_numkid == kids_K_12
+(3,564 real changes made)
+. label var all_K_12 "all children in K-12th grade"
+. 
+. //generate treatment variable 
+. gen treat = . 
+(6,457 missing values generated)
+. replace treat = 1 if all_preK == 1 
+(1,437 real changes made)
+. replace treat = 0 if all_K_12 == 1
+(3,564 real changes made)
+. label var treat "= 1 if all children preK or newborn age, = 0 if all children
+>  K-12, missing otherwise"
+note: label truncated to 80 characters
+. 
+. tab treat, mi
+
+ = 1 if all |
+   children |
+    preK or |
+    newborn |
+age, = 0 if |
+        all |
+   children |
+      K-12, |
+    missing |
+      other |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          0 |      3,564       55.20       55.20
+          1 |      1,437       22.25       77.45
+          . |      1,456       22.55      100.00
+------------+-----------------------------------
+      Total |      6,457      100.00
+. 
+. export delimited "data/processed/final_sample_treatment.csv", replace
+file data/processed/final_sample_treatment.csv saved
+. }
+
+. 
+. //make event dummies 
+. //event is week 34 
+. {
+. //generate event dummies first equal to week dummies 
+. tab week, gen(ED) 
+
+       WEEK |      Freq.     Percent        Cum.
+------------+-----------------------------------
+         28 |        704       10.90       10.90
+         29 |        788       12.20       23.11
+         30 |        767       11.88       34.99
+         31 |        712       11.03       46.01
+         32 |        685       10.61       56.62
+         33 |        671       10.39       67.01
+         34 |        268        4.15       71.16
+         35 |        289        4.48       75.64
+         36 |        291        4.51       80.15
+         37 |        272        4.21       84.36
+         38 |        241        3.73       88.09
+         39 |        246        3.81       91.90
+         40 |        207        3.21       95.11
+         41 |        316        4.89      100.00
+------------+-----------------------------------
+      Total |      6,457      100.00
+. 
+. //rename for clarity 
+. rename ED1 EDm5 
+. rename ED2 EDm4
+. rename ED3 EDm3
+. rename ED4 EDm2
+. rename ED5 EDm1
+. rename ED6 ED0
+. rename ED7 ED1
+. rename ED8 ED2
+. rename ED9 ED3
+. rename ED10 ED4
+. rename ED11 ED5
+. rename ED12 ED6
+. rename ED13 ED7
+. rename ED14 ED8
+. 
+. 
+. //replace event dummies as all 0 if units are never treated 
+. replace EDm5 = 0 if treat == 0 
+(376 real changes made)
+. replace EDm4 = 0 if treat == 0 
+(455 real changes made)
+. replace EDm3 = 0 if treat == 0 
+(417 real changes made)
+. replace EDm2 = 0 if treat == 0 
+(398 real changes made)
+. replace EDm1 = 0 if treat == 0 
+(380 real changes made)
+. replace ED0 = 0 if treat == 0 
+(369 real changes made)
+. replace ED1 = 0 if treat == 0 
+(133 real changes made)
+. replace ED2 = 0 if treat == 0 
+(159 real changes made)
+. replace ED3 = 0 if treat == 0 
+(164 real changes made)
+. replace ED4 = 0 if treat == 0 
+(150 real changes made)
+. replace ED5 = 0 if treat == 0 
+(138 real changes made)
+. replace ED6 = 0 if treat == 0 
+(143 real changes made)
+. replace ED6 = 0 if treat == 0 
+(0 real changes made)
+. replace ED7 = 0 if treat == 0 
+(115 real changes made)
+. replace ED8 = 0 if treat == 0 
+(167 real changes made)
+. 
+. 
+. 
+. 
+. }
+
+. 
+. //expense difficulty variable 
+. {
+. destring expns_dif, replace 
+expns_dif: all characters numeric; replaced as byte
+. recode expns_dif (3=1) (4=1) (1=0) (2=0) (-99 = .)
+(expns_dif: 6457 changes made)
+. label var expns_dif "=1 if difficulty paying expenses and = 0 otherwise"
+. 
+. }
+
+. 
+. //generate household type buckets 
+. {
+. //each household type is a bucket that is family size(1-5 kids), income categ
+> ory (1-6), and treatment status (0-1)
+. //there is probably a much more efficient way to do this but oh well 
+. gen household_type = . 
+(6,457 missing values generated)
+. //treatment = 0 
+. replace household_type = 1 if thhld_numkid == 1 & income == 1 & treat == 0 
+(70 real changes made)
+. replace household_type = 2 if thhld_numkid == 1 & income == 2 & treat == 0
+(85 real changes made)
+. replace household_type = 3 if thhld_numkid == 1 & income == 3 & treat == 0
+(146 real changes made)
+. replace household_type = 4 if thhld_numkid == 1 & income == 4 & treat == 0
+(367 real changes made)
+. replace household_type = 5 if thhld_numkid == 1 & income == 5 & treat == 0
+(401 real changes made)
+. replace household_type = 6 if thhld_numkid == 1 & income == 6 & treat == 0
+(651 real changes made)
+. 
+. replace household_type = 7 if thhld_numkid == 2 & income == 1 & treat == 0 
+(31 real changes made)
+. replace household_type = 8 if thhld_numkid == 2 & income == 2 & treat == 0 
+(55 real changes made)
+. replace household_type = 9 if thhld_numkid == 2 & income == 3 & treat == 0 
+(107 real changes made)
+. replace household_type = 10 if thhld_numkid == 2 & income == 4 & treat == 0 
+(240 real changes made)
+. replace household_type = 11 if thhld_numkid == 2 & income == 5 & treat == 0 
+(297 real changes made)
+. replace household_type = 12 if thhld_numkid == 2 & income == 6 & treat == 0 
+(522 real changes made)
+. 
+. replace household_type = 13 if thhld_numkid == 3 & income == 1 & treat == 0 
+(14 real changes made)
+. replace household_type = 14 if thhld_numkid == 3 & income == 2 & treat == 0 
+(41 real changes made)
+. replace household_type = 15 if thhld_numkid == 3 & income == 3 & treat == 0 
+(31 real changes made)
+. replace household_type = 16 if thhld_numkid == 3 & income == 4 & treat == 0 
+(78 real changes made)
+. replace household_type = 17 if thhld_numkid == 3 & income == 5 & treat == 0 
+(108 real changes made)
+. replace household_type = 18 if thhld_numkid == 3 & income == 6 & treat == 0 
+(167 real changes made)
+. 
+. replace household_type = 19 if thhld_numkid == 4 & income == 1 & treat == 0 
+(9 real changes made)
+. replace household_type = 20 if thhld_numkid == 4 & income == 2 & treat == 0 
+(14 real changes made)
+. replace household_type = 21 if thhld_numkid == 4 & income == 3 & treat == 0 
+(9 real changes made)
+. replace household_type = 22 if thhld_numkid == 4 & income == 4 & treat == 0 
+(21 real changes made)
+. replace household_type = 23 if thhld_numkid == 4 & income == 5 & treat == 0 
+(29 real changes made)
+. replace household_type = 24 if thhld_numkid == 4 & income == 6 & treat == 0 
+(50 real changes made)
+. 
+. //treatment = 1 
+. replace household_type = 25 if thhld_numkid == 1 & income == 1 & treat == 1 
+(36 real changes made)
+. replace household_type = 26 if thhld_numkid == 1 & income == 2 & treat == 1
+(59 real changes made)
+. replace household_type = 27 if thhld_numkid == 1 & income == 3 & treat == 1
+(89 real changes made)
+. replace household_type = 28 if thhld_numkid == 1 & income == 4 & treat == 1
+(183 real changes made)
+. replace household_type = 29 if thhld_numkid == 1 & income == 5 & treat == 1
+(196 real changes made)
+. replace household_type = 30 if thhld_numkid == 1 & income == 6 & treat == 1
+(341 real changes made)
+. 
+. replace household_type = 31 if thhld_numkid == 2 & income == 1 & treat == 1 
+(13 real changes made)
+. replace household_type = 32 if thhld_numkid == 2 & income == 2 & treat == 1 
+(23 real changes made)
+. replace household_type = 33 if thhld_numkid == 2 & income == 3 & treat == 1 
+(35 real changes made)
+. replace household_type = 34 if thhld_numkid == 2 & income == 4 & treat == 1 
+(90 real changes made)
+. replace household_type = 35 if thhld_numkid == 2 & income == 5 & treat == 1 
+(115 real changes made)
+. replace household_type = 36 if thhld_numkid == 2 & income == 6 & treat == 1 
+(159 real changes made)
+. 
+. replace household_type = 37 if thhld_numkid == 3 & income == 1 & treat == 1 
+(1 real change made)
+. replace household_type = 38 if thhld_numkid == 3 & income == 2 & treat == 1 
+(5 real changes made)
+. replace household_type = 39 if thhld_numkid == 3 & income == 3 & treat == 1 
+(8 real changes made)
+. replace household_type = 40 if thhld_numkid == 3 & income == 4 & treat == 1 
+(15 real changes made)
+. replace household_type = 41 if thhld_numkid == 3 & income == 5 & treat == 1 
+(22 real changes made)
+. replace household_type = 42 if thhld_numkid == 3 & income == 6 & treat == 1 
+(33 real changes made)
+. 
+. replace household_type = 43 if thhld_numkid == 4 & income == 1 & treat == 1 
+(2 real changes made)
+. replace household_type = 44 if thhld_numkid == 4 & income == 2 & treat == 1 
+(1 real change made)
+. replace household_type = 45 if thhld_numkid == 4 & income == 3 & treat == 1 
+(1 real change made)
+. replace household_type = 46 if thhld_numkid == 4 & income == 4 & treat == 1 
+(1 real change made)
+. replace household_type = 47 if thhld_numkid == 4 & income == 5 & treat == 1 
+(1 real change made)
+. replace household_type = 48 if thhld_numkid == 4 & income == 6 & treat == 1 
+(3 real changes made)
+. 
+. tab household_type, gen(household_type)
+
+household_t |
+        ype |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         70        1.41        1.41
+          2 |         85        1.71        3.12
+          3 |        146        2.93        6.05
+          4 |        367        7.38       13.43
+          5 |        401        8.06       21.49
+          6 |        651       13.09       34.57
+          7 |         31        0.62       35.20
+          8 |         55        1.11       36.30
+          9 |        107        2.15       38.45
+         10 |        240        4.82       43.28
+         11 |        297        5.97       49.25
+         12 |        522       10.49       59.74
+         13 |         14        0.28       60.02
+         14 |         41        0.82       60.84
+         15 |         31        0.62       61.47
+         16 |         78        1.57       63.04
+         17 |        108        2.17       65.21
+         18 |        167        3.36       68.56
+         19 |          9        0.18       68.74
+         20 |         14        0.28       69.03
+         21 |          9        0.18       69.21
+         22 |         21        0.42       69.63
+         23 |         29        0.58       70.21
+         24 |         50        1.01       71.22
+         25 |         36        0.72       71.94
+         26 |         59        1.19       73.13
+         27 |         89        1.79       74.91
+         28 |        183        3.68       78.59
+         29 |        196        3.94       82.53
+         30 |        341        6.85       89.39
+         31 |         13        0.26       89.65
+         32 |         23        0.46       90.11
+         33 |         35        0.70       90.81
+         34 |         90        1.81       92.62
+         35 |        115        2.31       94.93
+         36 |        159        3.20       98.13
+         37 |          1        0.02       98.15
+         38 |          5        0.10       98.25
+         39 |          8        0.16       98.41
+         40 |         15        0.30       98.71
+         41 |         22        0.44       99.16
+         42 |         33        0.66       99.82
+         43 |          2        0.04       99.86
+         44 |          1        0.02       99.88
+         45 |          1        0.02       99.90
+         46 |          1        0.02       99.92
+         47 |          1        0.02       99.94
+         48 |          3        0.06      100.00
+------------+-----------------------------------
+      Total |      4,975      100.00
+. }
+
+. 
+. //clean other control variables 
+. {
+. //race
+. gen black = 0 
+. replace black = 1 if rrace == 2 
+(423 real changes made)
+. 
+. gen asian = 0 
+. replace asian = 1 if rrace == 3 
+(324 real changes made)
+. 
+. gen other_race = 0 
+. replace other_race = 1 if rrace == 4 
+(325 real changes made)
+. 
+. gen hispanic = 0
+. replace hispanic = 1 if rhispanic == 2
+(608 real changes made)
+. 
+. //educ 
+. tab eeduc, gen(educ)
+
+      EEDUC |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |         33        0.51        0.51
+          2 |         54        0.84        1.35
+          3 |        599        9.28       10.62
+          4 |      1,209       18.72       29.35
+          5 |        754       11.68       41.03
+          6 |      2,055       31.83       72.85
+          7 |      1,753       27.15      100.00
+------------+-----------------------------------
+      Total |      6,457      100.00
+. 
+. //in person learning 
+. destring teach1, replace force
+teach1: contains nonnumeric characters; replaced as byte
+(2130 missing values generated)
+. gen in_person_school = 0 
+. replace in_person_school = 1 if teach1 == 1 
+(2,011 real changes made)
+. label var in_person_school "=1 if recived in person educ"
+. 
+. //recieved free food 
+. destring freefood, replace 
+freefood: all characters numeric; replaced as byte
+. replace freefood = 0 if freefood == 2 
+(6,033 real changes made)
+. label var freefood "= 1 if recieved free food"
+. 
+. //recieved snap 
+. destring snap_yn, replace 
+snap_yn: all characters numeric; replaced as byte
+. rename snap_yn snap 
+. replace snap = 0 if snap == 2 
+(5,891 real changes made)
+. label var snap "= 1 if recieved snap"
+. 
+. //employment 
+. destring anywork, replace 
+anywork: all characters numeric; replaced as byte
+. gen employed = 0 
+. replace employed = 1 if anywork == 2
+(1,821 real changes made)
+. 
+. //parent age 
+. gen parent_age = 2022 - tbirth_year
+. 
+. //educ 
+. rename eeduc educ 
+. 
+. //family size 
+. rename thhld_numper family_size
+. 
+. }
+
+. 
+. //total CTC eligible for 
+. {
+. gen ctc_eligible = kids_K_12*3000 + kids_preK*3600
+. label var ctc_eligible "total dollar amount of ctc HH eligible for based on n
+> umber of kids and child age"
+. 
+. }
+
+. 
+. //generate post dummmy and treatXpost dummy for DiD 
+. {
+. gen post = 0 
+. replace post = 1 if week >= 33
+(2,801 real changes made)
+. label var post "=1 if after the start of expanded ctc"
+. 
+. gen treatXpost = treat*post 
+(1,456 missing values generated)
+. gen percent_kids_preKXpost = percent_kids_preK*post
+. 
+. }
+
+. 
+. //child food security variable
+. {
+. destring childfood, replace 
+childfood: all characters numeric; replaced as byte
+. rename childfood child_foodsecure
+. recode child_foodsecure (-88=.) (-99=.) (3=1) (2=0) (1=0)
+(child_foodsecure: 6457 changes made)
+. label var child_foodsecure "=1 if the parent reports child is NEVER not eatin
+> g enough bc HH can't afford it"
+. }
+
+. 
+. /////////////////////////////////////////////////////////////////////////////
+> ///
+> //////////////////////////////////Final Specs////////////////////////////////
+> /// 
+> /////////////////////////////////////////////////////////////////////////////
+> ///
+> 
+. sum foodsecure_high
+
+    Variable |        Obs        Mean    Std. Dev.       Min        Max
+-------------+---------------------------------------------------------
+foodsecure~h |      6,457    .7597956    .4272406          0          1
+
+. 
+. ////////DiD///////
+> //DiD no controls - LHS = foodsecure
+. reg foodsecure treatXpost post treat [pweight = pweight]
+(sum of wgt is 18,074,507.014069)
+
+Linear regression                               Number of obs     =      5,001
+                                                F(3, 4997)        =       4.71
+                                                Prob > F          =     0.0027
+                                                R-squared         =     0.0093
+                                                Root MSE          =     .26653
+
+------------------------------------------------------------------------------
+             |               Robust
+  foodsecure |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+  treatXpost |    -.00425   .0312383    -0.14   0.892    -.0654909    .0569908
+        post |   .0109824   .0262571     0.42   0.676    -.0404931    .0624578
+       treat |   .0600985    .021261     2.83   0.005     .0184176    .1017794
+       _cons |    .902041   .0180648    49.93   0.000      .866626     .937456
+------------------------------------------------------------------------------
+
+. outreg2 using "tables/Main_Regression_Specs.doc", replace 
+tables/Main_Regression_Specs.doc
+dir : seeout
+
+. //DiD with controls - LHS = foodsecure
+. reg foodsecure treatXpost post treat i.income i.family_size black asian other
+> _race hispanic i.educ snap freefood in_person_school parent_age employed [pwe
+> ight = pweight]
+(sum of wgt is 18,074,507.014069)
+
+Linear regression                               Number of obs     =      5,001
+                                                F(31, 4969)       =       3.24
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.1760
+                                                Root MSE          =     .24376
+
+------------------------------------------------------------------------------
+             |               Robust
+  foodsecure |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+  treatXpost |  -.0521738   .0307803    -1.70   0.090    -.1125169    .0081693
+        post |   .0521243   .0266042     1.96   0.050    -.0000317    .1042803
+       treat |   .0942422   .0255019     3.70   0.000     .0442472    .1442373
+             |
+      income |
+          2  |   .1935376   .0667756     2.90   0.004     .0626281    .3244472
+          3  |   .2381399    .059772     3.98   0.000     .1209603    .3553195
+          4  |   .1997635   .0590759     3.38   0.001     .0839485    .3155784
+          5  |   .2643895   .0558258     4.74   0.000     .1549463    .3738326
+          6  |    .246325   .0573634     4.29   0.000     .1338673    .3587826
+             |
+ family_size |
+          3  |   .0143922     .05252     0.27   0.784    -.0885703    .1173546
+          4  |   .0272813   .0527034     0.52   0.605    -.0760407    .1306033
+          5  |  -.0042413   .0552778    -0.08   0.939    -.1126102    .1041276
+          6  |   .0155682   .0668391     0.23   0.816     -.115466    .1466024
+          7  |   .0001765   .0683489     0.00   0.998    -.1338176    .1341705
+          8  |  -.2564071   .1537713    -1.67   0.095    -.5578667    .0450526
+          9  |   .0946584   .0594647     1.59   0.111    -.0219187    .2112354
+         10  |  -.1239081   .1163372    -1.07   0.287    -.3519803    .1041641
+             |
+       black |  -.0255209   .0273183    -0.93   0.350    -.0790769    .0280351
+       asian |  -.1091085   .0816789    -1.34   0.182    -.2692352    .0510183
+  other_race |   -.083104   .0425229    -1.95   0.051    -.1664677    .0002598
+    hispanic |  -.0185843   .0238642    -0.78   0.436    -.0653687    .0282002
+             |
+        educ |
+          2  |  -.0980272   .1234642    -0.79   0.427    -.3400715    .1440172
+          3  |   .0010385   .0972756     0.01   0.991    -.1896646    .1917416
+          4  |   .0603007   .0932676     0.65   0.518    -.1225449    .2431462
+          5  |   .0603607   .0939752     0.64   0.521    -.1238722    .2445936
+          6  |   .0855161   .0941424     0.91   0.364    -.0990446    .2700768
+          7  |    .067278   .0947586     0.71   0.478    -.1184906    .2530466
+             |
+        snap |   9.50e-06   .0004038     0.02   0.981    -.0007822    .0008012
+    freefood |  -.0014155    .000532    -2.66   0.008    -.0024584   -.0003727
+in_person_~l |   .0663706   .0233427     2.84   0.004     .0206087    .1121326
+  parent_age |   .0012796   .0006668     1.92   0.055    -.0000277    .0025868
+    employed |  -.0440639   .0207984    -2.12   0.034    -.0848378   -.0032899
+       _cons |   .5586826   .1362016     4.10   0.000     .2916674    .8256979
+------------------------------------------------------------------------------
+
+. outreg2 using "tables/Main_Regression_Specs.doc", replace 
+tables/Main_Regression_Specs.doc
+dir : seeout
+
+. 
+. /////////Event Study//////
+> 
+. //set constraints 
+. //pre period avg to zero 
+. constraint define 1 EDm1 + EDm2 + EDm3 + EDm4 + EDm5 = 0 
+
+. 
+. //EDm1 = EDm2 
+. constraint 2 EDm4 = EDm5
+
+. 
+. 
+. //ES no controls, LHS = food secure 
+. cnsreg foodsecure ED* i.week treat [pweight = pweight], nocons constraints(1)
+note: treat omitted because of collinearity
+
+Constrained linear regression                   Number of obs     =      5,001
+                                                F(  24,   4975)   =    3262.78
+                                                Prob > F          =     0.0000
+                                                Root MSE          =    22.7244
+
+ ( 1)  EDm5 + EDm4 + EDm3 + EDm2 + EDm1 = 0
+------------------------------------------------------------------------------
+             |               Robust
+  foodsecure |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        EDm5 |   .8354889   .0290122    28.80   0.000     .7786122    .8923657
+        EDm4 |  -.2768473   .0481175    -5.75   0.000    -.3711788   -.1825158
+        EDm3 |  -.2051907   .0432602    -4.74   0.000    -.2899999   -.1203816
+        EDm2 |  -.1710105   .0418048    -4.09   0.000    -.2529663   -.0890548
+        EDm1 |  -.1824403     .07004    -2.60   0.009    -.3197496   -.0451311
+         ED0 |   .0221913   .0531143     0.42   0.676    -.0819362    .1263188
+         ED1 |   .0261727      .0255     1.03   0.305    -.0238186     .076164
+         ED2 |   .1090142   .0631037     1.73   0.084    -.0146967    .2327252
+         ED3 |   .0655034   .0955365     0.69   0.493    -.1217903    .2527971
+         ED4 |   .0121698   .0191468     0.64   0.525    -.0253663     .049706
+         ED5 |  -.0319936   .0603885    -0.53   0.596    -.1503816    .0863945
+         ED6 |   .1487872   .1213641     1.23   0.220      -.08914    .3867143
+         ED7 |   .0872408   .0355063     2.46   0.014     .0176328    .1568488
+         ED8 |   .0980061   .0377973     2.59   0.010     .0239068    .1721054
+             |
+        week |
+         29  |   .9701316   .0347065    27.95   0.000     .9020914    1.038172
+         30  |   1.001978   .0331968    30.18   0.000     .9368972    1.067058
+         31  |   .9607482   .0284768    33.74   0.000     .9049211    1.016575
+         32  |   .9213726   .0645049    14.28   0.000     .7949146    1.047831
+         33  |   .9110662   .0260114    35.03   0.000     .8600724    .9620601
+         34  |   .9592848   .0208715    45.96   0.000     .9183675    1.000202
+         35  |   .8847811    .062785    14.09   0.000     .7616948    1.007867
+         36  |   .8676879   .0817123    10.62   0.000     .7074959     1.02788
+         37  |   .9680389   .0133798    72.35   0.000     .9418085    .9942692
+         38  |   .9727437   .0128698    75.58   0.000     .9475131    .9979743
+         39  |   .8512128   .1213641     7.01   0.000     .6132857     1.08914
+         40  |   .9063537   .0348886    25.98   0.000     .8379567    .9747508
+         41  |   .9019939   .0377973    23.86   0.000     .8278946    .9760932
+             |
+       treat |          0  (omitted)
+------------------------------------------------------------------------------
+
+. outreg2 using "tables/Main_Regression_Specs.doc", append
+tables/Main_Regression_Specs.doc
+dir : seeout
+
+. 
+. 
+. 
+. /* EVENT STUDY PLOT 1 */ 
+. //ES with all controls (treat, income, and family size included seperate), LH
+> S = food secure 
+. cnsreg foodsecure ED* treat i.week i.income i.family_size black asian ///
+>         other_race hispanic i.educ snap freefood in_person_school parent_age 
+> ///
+>         [pweight = pweight], nocons constraints(1) collinear 
+
+Constrained linear regression                   Number of obs     =      5,001
+                                                F(  54,   4947)   =    2378.57
+                                                Prob > F          =     0.0000
+                                                Root MSE          =    14.8064
+
+ ( 1)  EDm5 + EDm4 + EDm3 + EDm2 + EDm1 = 0
+------------------------------------------------------------------------------
+             |               Robust
+  foodsecure |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        EDm5 |   .0394376   .0295292     1.34   0.182    -.0184527    .0973279
+        EDm4 |  -.0482921   .0373403    -1.29   0.196    -.1214956    .0249114
+        EDm3 |   .0014819   .0349688     0.04   0.966    -.0670724    .0700363
+        EDm2 |   -.002167   .0324624    -0.07   0.947    -.0658077    .0614738
+        EDm1 |   .0095395   .0468352     0.20   0.839    -.0822783    .1013573
+         ED0 |  -.0857365     .05443    -1.58   0.115    -.1924434    .0209704
+         ED1 |  -.1409509   .0421701    -3.34   0.001     -.223623   -.0582788
+         ED2 |  -.0461421   .0575892    -0.80   0.423    -.1590424    .0667583
+         ED3 |  -.0789912   .0669712    -1.18   0.238    -.2102844     .052302
+         ED4 |   -.113699   .0486081    -2.34   0.019    -.2089924   -.0184056
+         ED5 |  -.1774338   .0594148    -2.99   0.003    -.2939131   -.0609545
+         ED6 |   .0178746   .0964676     0.19   0.853    -.1712447    .2069939
+         ED7 |  -.0698454   .0511976    -1.36   0.173    -.1702155    .0305247
+         ED8 |  -.0137817   .0502576    -0.27   0.784    -.1123089    .0847456
+       treat |   .1326121   .0250232     5.30   0.000     .0835554    .1816687
+             |
+        week |
+         29  |   .0231001   .0423863     0.54   0.586    -.0599958    .1061959
+         30  |   .0325689   .0440642     0.74   0.460    -.0538165    .1189542
+         31  |   .0128819    .037627     0.34   0.732    -.0608838    .0866476
+         32  |  -.0111065   .0418352    -0.27   0.791    -.0931221     .070909
+         33  |    .043054   .0349597     1.23   0.218    -.0254825    .1115905
+         34  |   .1366394   .0382192     3.58   0.000     .0617129    .2115659
+         35  |    .072773   .0562112     1.29   0.196     -.037426    .1829719
+         36  |   .1094377   .0501273     2.18   0.029      .011166    .2077095
+         37  |   .1446189    .033777     4.28   0.000     .0784009    .2108368
+         38  |   .1545558   .0436125     3.54   0.000     .0690559    .2400557
+         39  |   .0065229   .0982684     0.07   0.947    -.1861267    .1991725
+         40  |   .0963647   .0494641     1.95   0.051     -.000607    .1933363
+         41  |   .0643509   .0468431     1.37   0.170    -.0274824    .1561841
+             |
+      income |
+          2  |   .2651327   .0616608     4.30   0.000     .1442503    .3860151
+          3  |   .3053657   .0548696     5.57   0.000     .1977969    .4129346
+          4  |    .276295   .0546304     5.06   0.000     .1691953    .3833948
+          5  |   .3346136   .0505878     6.61   0.000     .2354392     .433788
+          6  |   .3174937   .0523238     6.07   0.000     .2149158    .4200717
+             |
+ family_size |
+          3  |   .2394358   .0572489     4.18   0.000     .1272026    .3516691
+          4  |   .2479819   .0558591     4.44   0.000     .1384733    .3574905
+          5  |    .215759   .0584405     3.69   0.000     .1011897    .3303282
+          6  |   .2422252   .0660015     3.67   0.000     .1128329    .3716174
+          7  |    .229455   .0728458     3.15   0.002     .0866449    .3722651
+          8  |    -.01413   .1452538    -0.10   0.923    -.2988918    .2706318
+          9  |    .233647   .0605534     3.86   0.000     .1149354    .3523585
+         10  |   .0887097   .1006428     0.88   0.378    -.1085949    .2860143
+             |
+       black |  -.0225354   .0267142    -0.84   0.399     -.074907    .0298363
+       asian |  -.0981024   .0721832    -1.36   0.174    -.2396135    .0434088
+  other_race |  -.0701714   .0434788    -1.61   0.107    -.1554091    .0150663
+    hispanic |   .0092747   .0240003     0.39   0.699    -.0377765     .056326
+             |
+        educ |
+          2  |   .0686374   .1051205     0.65   0.514    -.1374455    .2747202
+          3  |   .1445048   .0751784     1.92   0.055    -.0028782    .2918877
+          4  |   .2046556   .0719483     2.84   0.004     .0636051    .3457062
+          5  |    .199958   .0733344     2.73   0.006     .0561901    .3437259
+          6  |   .2321557   .0722276     3.21   0.001     .0905575    .3737539
+          7  |   .2157224   .0727826     2.96   0.003     .0730362    .3584085
+             |
+        snap |  -.0000866   .0003288    -0.26   0.792    -.0007311    .0005579
+    freefood |  -.0014814    .000512    -2.89   0.004    -.0024852   -.0004777
+in_person_~l |   .0869503    .024338     3.57   0.000     .0392369    .1346636
+  parent_age |   .0029018   .0005524     5.25   0.000     .0018189    .0039848
+------------------------------------------------------------------------------
+
+. outreg2 using "tables/Main_Regression_Specs.doc", append
+tables/Main_Regression_Specs.doc
+dir : seeout
+
+. outreg2 using "tables/main_reg_spec.xlsx", replace 
+tables/main_reg_spec.xlsx
+dir : seeout
+
+. 
+. //ES no controls, LHS = high food secure 
+. cnsreg foodsecure_high ED* i.week treat [pweight = pweight], nocons constrain
+> ts(1)
+note: treat omitted because of collinearity
+
+Constrained linear regression                   Number of obs     =      5,001
+                                                F(  26,   4975)   =     123.57
+                                                Prob > F          =     0.0000
+                                                Root MSE          =    30.3505
+
+ ( 1)  EDm5 + EDm4 + EDm3 + EDm2 + EDm1 = 0
+------------------------------------------------------------------------------
+             |               Robust
+foodsecure~h |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        EDm5 |   .6059783   .0708404     8.55   0.000     .4670998    .7448567
+        EDm4 |  -.1769285   .0707188    -2.50   0.012    -.3155686   -.0382885
+        EDm3 |  -.1146314    .064889    -1.77   0.077    -.2418425    .0125797
+        EDm2 |  -.1553891   .0718873    -2.16   0.031      -.29632   -.0144583
+        EDm1 |  -.1590292   .0866913    -1.83   0.067    -.3289823    .0109239
+         ED0 |   .0875039   .0740281     1.18   0.237    -.0576238    .2326316
+         ED1 |   .3022368   .0914169     3.31   0.001     .1230193    .4814543
+         ED2 |    .181386   .1011432     1.79   0.073    -.0168993    .3796712
+         ED3 |  -.0261051   .1269701    -0.21   0.837    -.2750225    .2228124
+         ED4 |   .1453763   .0740868     1.96   0.050     .0001336     .290619
+         ED5 |  -.0442764   .1996414    -0.22   0.824    -.4356616    .3471087
+         ED6 |   .1232497   .2096168     0.59   0.557    -.2876918    .5341911
+         ED7 |   .0022902   .1599251     0.01   0.989    -.3112336     .315814
+         ED8 |   .0842163   .1237429     0.68   0.496    -.1583743    .3268069
+             |
+        week |
+         29  |   .6937129   .0495981    13.99   0.000     .5964787    .7909471
+         30  |   .7970194   .0414527    19.23   0.000     .7157538    .8782851
+         31  |   .6816225   .0476885    14.29   0.000      .588132    .7751129
+         32  |   .6267391   .0624703    10.03   0.000     .5042697    .7492084
+         33  |   .7058905   .0444744    15.87   0.000     .6187011    .7930798
+         34  |   .6151639   .0786712     7.82   0.000     .4609336    .7693941
+         35  |   .6272429   .0685644     9.15   0.000     .4928266    .7616593
+         36  |   .6968742   .0826158     8.44   0.000     .5349108    .8588376
+         37  |   .7473722    .058108    12.86   0.000      .633455    .8612894
+         38  |   .6116044   .0941923     6.49   0.000      .426946    .7962628
+         39  |   .5600056   .0986756     5.68   0.000     .3665579    .7534533
+         40  |   .5767053   .0854223     6.75   0.000     .4092399    .7441707
+         41  |    .648496   .0676124     9.59   0.000     .5159459    .7810461
+             |
+       treat |          0  (omitted)
+------------------------------------------------------------------------------
+
+. outreg2 using "tables/Main_Regression_Specs.doc", append
+tables/Main_Regression_Specs.doc
+dir : seeout
+
+. 
+. 
+. /* EVENT STUDY PLOT 2 */ 
+. //ES with all controls (treat, income, and family size included seperate), LH
+> S = high food secure 
+. cnsreg foodsecure_high ED* treat i.week i.income i.family_size black asian //
+> /
+>         other_race hispanic i.educ snap freefood in_person_school parent_age 
+> ///
+>         [pweight = pweight], nocons constraints(1) collinear 
+
+Constrained linear regression                   Number of obs     =      5,001
+                                                F(  54,   4947)   =     189.31
+                                                Prob > F          =     0.0000
+                                                Root MSE          =    25.6619
+
+ ( 1)  EDm5 + EDm4 + EDm3 + EDm2 + EDm1 = 0
+------------------------------------------------------------------------------
+             |               Robust
+foodsecure~h |      Coef.   Std. Err.      t    P>|t|     [95% Conf. Interval]
+-------------+----------------------------------------------------------------
+        EDm5 |      .0477   .0665534     0.72   0.474    -.0827743    .1781742
+        EDm4 |  -.0020574   .0546991    -0.04   0.970    -.1092918    .1051771
+        EDm3 |   .0378148   .0581922     0.65   0.516    -.0762678    .1518973
+        EDm2 |  -.0545586   .0610023    -0.89   0.371    -.1741503     .065033
+        EDm1 |  -.0288987    .073251    -0.39   0.693    -.1725031    .1147056
+         ED0 |  -.0585681   .0784178    -0.75   0.455    -.2123018    .0951655
+         ED1 |   .0586629   .0886707     0.66   0.508     -.115171    .2324968
+         ED2 |   .0380949   .1028331     0.37   0.711    -.1635037    .2396935
+         ED3 |  -.1901047    .121795    -1.56   0.119    -.4288768    .0486675
+         ED4 |   .0738223   .1008868     0.73   0.464    -.1239606    .2716053
+         ED5 |  -.1797904   .1583592    -1.14   0.256    -.4902447    .1306639
+         ED6 |  -.0479018   .2013263    -0.24   0.812    -.4425906     .346787
+         ED7 |  -.1172688   .1203301    -0.97   0.330    -.3531691    .1186315
+         ED8 |   .0052009   .1495722     0.03   0.972    -.2880269    .2984288
+       treat |   .0888494   .0379765     2.34   0.019     .0143986    .1633002
+             |
+        week |
+         29  |   .0157456   .0542328     0.29   0.772    -.0905746    .1220659
+         30  |   .0930035   .0627288     1.48   0.138    -.0299727    .2159798
+         31  |   .0289012   .0616593     0.47   0.639    -.0919783    .1497808
+         32  |  -.0236053   .0616237    -0.38   0.702    -.1444151    .0972045
+         33  |   .1032222   .0646352     1.60   0.110    -.0234914    .2299357
+         34  |   .0825537   .0778278     1.06   0.289    -.0700233    .2351307
+         35  |   .0467522   .0724204     0.65   0.519     -.095224    .1887284
+         36  |   .2095453   .0845963     2.48   0.013      .043699    .3753916
+         37  |   .1523533   .0798544     1.91   0.056    -.0041969    .3089034
+         38  |    .055713   .0721647     0.77   0.440    -.0857617    .1971878
+         39  |  -.0343378   .0910048    -0.38   0.706    -.2127475     .144072
+         40  |   .0104948   .0960379     0.11   0.913    -.1777821    .1987716
+         41  |   .0446812   .0804773     0.56   0.579    -.1130899    .2024523
+             |
+      income |
+          2  |   .1585466   .0649261     2.44   0.015     .0312626    .2858306
+          3  |   .1997182   .0664167     3.01   0.003     .0695121    .3299243
+          4  |   .3070251   .0580301     5.29   0.000     .1932602    .4207899
+          5  |   .4312767   .0567101     7.60   0.000     .3200998    .5424536
+          6  |   .4564958   .0557456     8.19   0.000     .3472098    .5657818
+             |
+ family_size |
+          3  |   .0736885   .0617243     1.19   0.233    -.0473184    .1946955
+          4  |   .0696319   .0615859     1.13   0.258    -.0511038    .1903675
+          5  |    .008088   .0665169     0.12   0.903    -.1223146    .1384906
+          6  |   .0007569   .0689443     0.01   0.991    -.1344044    .1359182
+          7  |   .0222351   .1099173     0.20   0.840    -.1932516    .2377218
+          8  |  -.1928188   .0913975    -2.11   0.035    -.3719985   -.0136391
+          9  |  -.0872529   .1944118    -0.45   0.654    -.4683862    .2938804
+         10  |    -.14356   .1429911    -1.00   0.315    -.4238861     .136766
+             |
+       black |  -.1232892   .0399001    -3.09   0.002    -.2015111   -.0450673
+       asian |  -.1266363   .0575595    -2.20   0.028    -.2394785   -.0137942
+  other_race |  -.0391864   .0524482    -0.75   0.455    -.1420081    .0636353
+    hispanic |  -.0822689   .0427055    -1.93   0.054    -.1659906    .0014529
+             |
+        educ |
+          2  |   .1615672   .1113478     1.45   0.147    -.0567239    .3798582
+          3  |   .1147922    .082915     1.38   0.166     -.047758    .2773424
+          4  |   .1201205   .0835111     1.44   0.150    -.0435984    .2838393
+          5  |   .1303102   .0840377     1.55   0.121     -.034441    .2950615
+          6  |    .233718   .0816501     2.86   0.004     .0736476    .3937884
+          7  |   .2409543    .082759     2.91   0.004       .07871    .4031986
+             |
+        snap |  -.0014463   .0009598    -1.51   0.132    -.0033278    .0004353
+    freefood |  -.0029132   .0007329    -3.97   0.000    -.0043501   -.0014763
+in_person_~l |   .0494788   .0355108     1.39   0.164    -.0201381    .1190956
+  parent_age |   .0018836   .0009648     1.95   0.051    -7.82e-06     .003775
+------------------------------------------------------------------------------
+
+.         
+. outreg2 using "tables/Main_Regression_Specs.doc", append
+tables/Main_Regression_Specs.doc
+dir : seeout
+
+. outreg2 using "tables/main_reg_spec.xlsx", append 
+tables/main_reg_spec.xlsx
+dir : seeout
+
+. 
+. 
+. 
+. 
+. 
+. 
+end of do-file
+.       
+.       
+.       
+
+> library(compareGroups)
+
+> # Purpose -----------------------------------------------------------------
+> ## The purpose of this script is to generate descriptive stats tables taht 
+> ## describes our data. 
+> 
+> outdir <- "data/processed/"
+
+> data <- read_csv(paste0(outdir, "HPS_all.csv"), 
++                  show_col_types = FALSE, 
++                  progress = FALSE)
+
+> final_sample <- read_csv(paste0(outdir, "final_sample_treatment.csv"), 
++                          show_col_types = FALSE, 
++                          progress = FALSE)
+
+> # Generating Table -------------------------------------------------------
+> table_data <- data %>% 
++     rename_with(~tolower(.x), .cols = everything()) %>% 
++     mutate(Group = "1:No Sample Restrictions") %>% 
++     bind_rows(final_sample %>% 
++                   filter(!is.na(treat)) %>% 
++                   mutate(Group = "2:All Sample Restrictions")) %>% 
++     bind_rows(final_sample %>%
++                   filter(treat == 1) %>% 
++                   mutate(Group = "3:Treatment")) %>% 
++     bind_rows(final_sample %>%
++                   filter(treat == 0) %>% 
++                   mutate(Group = "4:Control")) %>%
++     mutate(
++         Income = case_when(income == 1 ~ "Less than 2> # Generating Table -------------------------------------------------------
+> table_data <- data %>% 
++     rename_with(~tolower(.x), .cols = everything()) %>% 
++     mutate(Group = "1:No Sample Restrictions") %>% 
++     bind_rows(final_sample %>% 
++                   filter(!is.na(treat)) %>% 
++    .... [TRUNCATED] 
+
+> rm(data, final_sample)
+
+> sumStats <- table_data %>% 
++     # Selecting relevant demographic variables
++     select(Group, Race, Hispanic, Education, `Marital Status`, Income, `Total Kids`, Week) %>% 
++     # Note: method = c(Week = 2) is telling CompareGroups to report the min and max values 
++     compareGroups(formula = Group ~ ., 
++                   method = c(Week = 2), Q1 = 0 , Q3 = 1) 
+
+> table <- createTable(sumStats, show.p.overall = FALSE)
+
+> expand_factor <- function(data, var){
++     if(is.factor(data %>% pull(var))){
++         distinct_values <- data %>% pull(var) %>% unique()
++         for(v in distinct_values){
++             if(!is.na(v)){
++                 data <- data %>% 
++                     mutate(!!paste0(var, "_", v) := case_when(get(var) == v ~ 1, 
++                                                               TRUE ~ 0))
++                 
++             } else {
++                 data <- data %>% 
++                     mutate(!!paste0(var, "_", v) := case_when(is.na(get(var)) ~ 1, 
++                                                               TRUE ~ 0))
++             }
++             
++         }
++         
++  > expand_factor <- function(data, var){
++     if(is.factor(data %>% pu
+
+> sumstats_treatment <- table_data %>% 
++     # Selecting relevant demographic variables
++     select(Group, Race, Hispanic, Education, `Marital Status`, Income, `Total Kids`, Week)  %>% 
++     filter(Group == "3:Treatment" | Group == "4:Control") %>% 
++     expand_factor("Race") %>% 
++     expand_factor("Hispanic") %>% 
++     expand_factor("Education") %>% 
++     expand_factor("Income") %>% 
++     compareGroups(formula = Group ~ ., 
++                   method = c(Week = 2), Q1 = 0, Q3 = 1, p.corrected = FALSE)
+
+> table_treatment <- createTable(sumstats_treatment, show.p.overall = TRUE)
+
+> # Getting Latex Code
+> #export2latex(table)
+> 
+> # Getting Word Doc 
+> export2word(table, file = tempfile(fileext=".docx"))
+
+> # Purpose -----------------------------------------------------------------
+>     # The purpose of this script is to validate our identifying 
+>     # assumption for the event study design that we are using to
+>     # identify the causal effects. 
+> 
+> 
+> # Housekeeping ------------------------------------------------------------
+> outdir <- "data/processed/"
+
+> final_sample <- read_csv(paste0(outdir, "final_sample_treatment.csv"), 
++                         show_col_types = FALSE, 
++                         progress = FALSE)
+
+> # Data Prep and Plot -------------------------------------------------------
+> plot <- final_sample %>% 
++     mutate(foodsecure = case_when(curfoodsuf == 1 ~ 1, 
++                                   curfoodsuf == 2 ~ 0, 
++                                   TRUE ~ NA_real_), 
++            week2 = week - 34, 
++            week3 = week - 33) %>% 
++     filter(!is.na(foodsecure), !is.na(treat)) %>%
++     group_by(treat, week3) %>% 
++     summarize(mean_foodsecure = mean(foodsecure)) %>% 
++     ggplot(aes(x = factor(week3), y = mean_foodsecure* 100, col = factor(treat))) + 
++     geom_point(size = 3) + 
++     geom_line(aes(aes.inherit = TRUE), lwd = 1.25, size = 2) + 
++     geom_line(aes(group> # Data Prep and Plot -------------------------------------------------------
+> plot <- final_sample %>% 
++     mutate(foodsecure = case_when(curfoodsuf == 1 ~ 1, 
++                                   curfoodsuf == 2 ~ 0, 
++                                   TRUE ~ NA_real_), 
++            week2 = we .... [TRUNCATED] 
+
+> ggsave(filename = "tables/identifying_assumptions.png", plot = plot)
+
+> # Purpose -----------------------------------------------------------------
+>     # Getting reg output into proper format for graphing in stata 
+> 
+> 
+> # Housekeeping ------------------------------------------------------------
+> library(tidyverse)
+
+> fp <- "tables/main_reg_spec.txt"
+
+> # Data Prep ---------------------------------------------------------------
+> read_delim(fp, col_names = c("var", "foodsecure", "foodsecure_high"), 
++            show_col_types = FALSE, 
++            progress = FALSE) %>% 
++     slice(-c(1:2)) %>% 
++     select(1:3) %>% 
++     fill(var, .direction = "down") %>% 
++     mutate(event_var = case_when(str_detect(var, "ED") ~ 1, TRUE ~ 0)) %>% 
++     filter(event_var == 1) %>% 
++     mutate(est_type = case_when(str_detect(foodsecure, "\\(") ~ "se", TRUE ~ "coef"),            
++            event = parse_number(var), 
++            event = case_when(str_detect(var, "m") ~ event *-1, 
++                              TRUE ~ event), 
++            food> # Data Prep ---------------------------------------------------------------
+> read_delim(fp, col_names = c("var", "foodsecure", "foodsecure_high"), 
++            show_col_types = FALSE, 
++            progress = FALSE) %>% 
++     slice(-c(1:2)) %>% 
++     select(1:3) %>% 
++     fill(var, .direction  .... [TRUNCATED] 
+.   
+.       cd /Users/sammygold/Desktop/Group1Replicate/
+/Users/sammygold/Desktop/Group1Replicate
+.       do source/scripts/PAM6090_Proj_EventStudyPlots.do
+
+. /*---------------------------------------------------------------------------
+> ---
+> goal: Generate event study plots for deliverable 2 
+> 
+> -----------------------------------------------------------------------------
+> -*/
+. 
+. 
+. use "data/processed/event_study_plots_w_CI.dta", clear 
+
+. 
+. rename ES_b FoodSecure
+
+. rename ES_b2 FoodSecureHigh
+
+. rename etime EventTime
+
+. 
+. graph twoway (connected FoodSecure EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(blue) lpattern(solid))                  ///
+>         (connected FoodSecureHigh EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(red) lpattern(solid)) ///
+>         , xline(-0.5, lpattern("dash") lwidth("vthin")) ///
+>         yline(0, lpattern("dash") lwidth("vthin")) /// 
+>         note("Estimated treatment effects.") ///
+>         xlabel(-5(1)8)
+
+. 
+. 
+. drop if EventTime > 5
+(3 observations deleted)
+
+. 
+. graph twoway (connected FoodSecure EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(blue) lpattern(solid))                  ///
+>         (connected FoodSecureHigh EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(red) lpattern(solid)) ///
+>         , xline(-0.5, lpattern("dash") lwidth("vthin")) ///
+>         yline(0, lpattern("dash") lwidth("vthin")) /// 
+>         note("Estimated treatment effects.") /// 
+>         xlabel(-5(1)5)
+
+. 
+. use "data/processed/event_study_plots_w_CI.dta", clear 
+
+. rename ES_b FoodSecure
+
+. rename ES_b2 FoodSecureHigh
+
+. rename etime EventTime
+
+. 
+. graph twoway (connected FoodSecure EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(blue) lpattern(solid))                  ///
+>         (rcap ES_b_lower ES_b_upper EventTime),                   ///
+>         xline(-0.5, lpattern("dash") lwidth("vthin")) ///
+>         yline(0, lpattern("dash") lwidth("vthin")) ///
+>         note("Estimated treatment effects with 90% Confidence Interval.") ///
+>  
+>         legend(order(1 "FoodSecure")) xlabel(-5(1)8)
+
+. 
+.         
+. graph twoway (connected FoodSecureHigh EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(red) lpattern(solid))           ///
+>         (rcap ES_b2_lower ES_b2_upper EventTime, ),               ///
+>         xline(-0.5, lpattern("dash") lwidth("vthin")) ///
+>         yline(0, lpattern("dash") lwidth("vthin")) ///
+>         note("Estimated treatment effects with 90% Confidence Interval.") ///
+>  
+>         legend(order(1 "FoodSecureHigh")) xlabel(-5(1)8)
+
+. 
+. 
+.         
+. 
+. 
+end of do-file
+. 
+.       
+") lwidth("vthin")) ///
+>         note("Estimated treatment effects with 90% Confidence Interval.") ///
+>  
+>         legend(order(1 "FoodSecure")) xlabel(-5(1)8)
+
+. 
+.         
+. graph twoway (connected FoodSecureHigh EventTime ,  msize(medsmall) ///
+>         msymbol(o) mcolor(red) lpattern(solid))           ///
+>         (rcap ES_b2_lower ES_b2_upper EventTime, ),               ///
+>         xline(-0.5, lpattern("dash") lwidth("vthin")) ///
+>         yline(0, lpattern("dash") lwidth("vthin")) ///
+>         note("Estimated treatment effects with 90% Confidence Interval.") ///
+>  
+>         legend(order(1 "FoodSecureHigh")) xlabel(-5(1)8)
+
+. 
+. 
+.         
+. 
+. 
+end of do-file
+. 
+.       

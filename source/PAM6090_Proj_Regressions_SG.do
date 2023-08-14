@@ -1,4 +1,4 @@
-
+// Author: Gabrielle Sorresso, Kayla Jones, Frances Wang, and Samantha Gold
 
 use "data/processed/pulse_final_sample.dta", clear 
 
